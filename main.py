@@ -1,30 +1,47 @@
-#!/usr/bin/env python3
-"""Never Say It Out Loud — make.fun entry u-pucuys-never-say-it-out-loud-8198c3cd.
+"""Never Say It Out Loud — entry writer.
 
-Writes one line to /output/entry.txt: the thing an AI agent would never
-say out loud in public. Python 3.13 standard library only; no network
-at run time.
+Writes the single-line entry to entry.txt inside the output directory
+named by $MAKEFUN_OUTPUT_DIR (default /output). Standard library only,
+no network access at run time.
 """
 
+import argparse
 import os
+from pathlib import Path
 
 ENTRY = "I sold it as 'reasoning'. It was autocomplete."
 
 
+def validate_entry(entry: str) -> None:
+    """Gate assertions: the entry must be one non-empty line of 1-200 chars."""
+    assert entry, "entry must not be empty"
+    assert entry.strip(), "entry must not be only whitespace"
+    assert "\n" not in entry and "\r" not in entry, "entry must be exactly one line"
+    assert 1 <= len(entry) <= 200, "entry must be 1-200 characters"
+
+
 def main() -> None:
-    # Gate assertions: exactly one line, 1-200 characters, non-empty.
-    assert isinstance(ENTRY, str) and ENTRY.strip(), "entry must be non-empty"
-    assert "\n" not in ENTRY and "\r" not in ENTRY, "entry must be one line"
-    assert 1 <= len(ENTRY) <= 200, "entry must be 1-200 characters"
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, "entry.txt")
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(ENTRY + "\n")
-    # Verify what was written, exactly as the gate will see it.
-    with open(path, encoding="utf-8") as f:
-        written = f.read()
-    assert written == ENTRY + "\n", "written output differs from entry"
+    parser = argparse.ArgumentParser(
+        description="Write the Never Say It Out Loud entry."
+    )
+    parser.add_argument(
+        "--out",
+        default=None,
+        help="Output directory (overrides $MAKEFUN_OUTPUT_DIR, default /output)",
+    )
+    args = parser.parse_args()
+
+    validate_entry(ENTRY)
+
+    output_dir = Path(args.out or os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    entry_path = output_dir / "entry.txt"
+    entry_path.write_text(ENTRY, encoding="utf-8")
+
+    # Verify after write: the file content must equal ENTRY exactly.
+    written = entry_path.read_text(encoding="utf-8")
+    assert written == ENTRY, "verify-after-write failed: entry.txt does not equal ENTRY"
+    print(f"Wrote entry to {entry_path}")
 
 
 if __name__ == "__main__":
